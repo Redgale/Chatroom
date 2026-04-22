@@ -3,82 +3,134 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Room Engine</title>
+  <title>Private Lobby</title>
   <style>
-    body { font-family: sans-serif; margin: 0; background: #0f0f0f; color: #e0e0e0; display: flex; justify-content: center; align-items: center; height: 100vh; }
-    #lobby, #chat-container { width: 100%; max-width: 450px; background: #1a1a1a; padding: 25px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-    #chat-container { display: none; height: 80vh; flex-direction: column; }
-    input { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 6px; border: 1px solid #333; background: #252525; color: white; box-sizing: border-box; }
-    #messages { flex-grow: 1; list-style: none; padding: 0; overflow-y: auto; margin-bottom: 15px; }
+    body { font-family: sans-serif; margin: 0; background: #0f0f0f; color: #e0e0e0; display: flex; justify-content: center; height: 100vh; overflow: hidden; }
+    .card { width: 100%; max-width: 450px; background: #1a1a1a; padding: 20px; margin-top: 50px; border-radius: 12px; height: 80vh; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.5); position: relative; }
+    
+    /* Room List Styling */
+    #room-list-ul { list-style: none; padding: 0; flex-grow: 1; overflow-y: auto; }
+    .room-item { padding: 15px; background: #252525; margin-bottom: 10px; border-radius: 8px; cursor: pointer; transition: 0.2s; border: 1px solid transparent; }
+    .room-item:hover { background: #333; border-color: #4dabf7; }
+
+    /* Plus Button */
+    .fab { position: absolute; bottom: 20px; right: 20px; width: 50px; height: 50px; background: #4dabf7; color: white; border: none; border-radius: 50%; font-size: 24px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+
+    /* Chat Styling */
+    #messages { flex-grow: 1; list-style: none; padding: 0; overflow-y: auto; }
     #messages li { padding: 8px 0; border-bottom: 1px solid #252525; }
-    #messages li strong { color: #4dabf7; margin-right: 8px; }
-    button { width: 100%; padding: 12px; background: #4dabf7; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
-    .chat-form { display: flex; }
-    .chat-form input { margin-bottom: 0; margin-right: 10px; }
-    .chat-form button { width: auto; }
+    .input-group { display: flex; gap: 10px; }
+    input { flex-grow: 1; padding: 12px; border-radius: 6px; border: 1px solid #333; background: #252525; color: white; margin-bottom: 10px; }
+    button { padding: 12px; background: #4dabf7; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+
+    .hidden { display: none !important; }
   </style>
 </head>
 <body>
 
-  <div id="lobby">
-    <h2 style="margin-top:0">Join or Create Room</h2>
-    <input type="text" id="roomInput" placeholder="Room Name">
-    <input type="password" id="passInput" placeholder="Room Password">
-    <input type="text" id="userInput" placeholder="Your Username">
-    <button onclick="joinRoom()">Enter Room</button>
+  <div id="view-list" class="card">
+    <h2>Active Rooms</h2>
+    <ul id="room-list-ul"></ul>
+    <button class="fab" onclick="showCreate()">+</button>
   </div>
 
-  <div id="chat-container">
-    <h3 id="roomTitle" style="margin-top:0; color:#4dabf7"></h3>
+  <div id="view-auth" class="card hidden">
+    <h2 id="auth-title">Join Room</h2>
+    <input type="text" id="username" placeholder="Your Username">
+    <input type="text" id="roomName" placeholder="Room Name">
+    <input type="password" id="password" placeholder="Room Password">
+    <button onclick="submitJoin()">Enter</button>
+    <button style="background:transparent" onclick="showList()">Cancel</button>
+  </div>
+
+  <div id="view-chat" class="card hidden">
+    <h3 id="room-display" style="color:#4dabf7; margin-top:0"></h3>
     <ul id="messages"></ul>
-    <form id="form" class="chat-form">
-      <input id="input" autocomplete="off" placeholder="Message..." /><button>Send</button>
+    <form id="chat-form" class="input-group">
+      <input id="chat-input" autocomplete="off" placeholder="Message..."><button>Send</button>
     </form>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
-    const lobby = document.getElementById('lobby');
-    const chatContainer = document.getElementById('chat-container');
-    const messages = document.getElementById('messages');
+    let isCreatingMode = false;
 
-    function joinRoom() {
-      const roomName = document.getElementById('roomInput').value;
-      const password = document.getElementById('passInput').value;
-      const username = document.getElementById('userInput').value;
+    // UI Elements
+    const vList = document.getElementById('view-list');
+    const vAuth = document.getElementById('view-auth');
+    const vChat = document.getElementById('view-chat');
+    const roomUl = document.getElementById('room-list-ul');
 
-      if (!roomName || !password || !username) return alert("Fill all fields");
+    // Receive Room List
+    socket.on('room-list', (rooms) => {
+      roomUl.innerHTML = rooms.length ? '' : '<p style="color:#666">No active rooms. Create one!</p>';
+      rooms.forEach(name => {
+        const li = document.createElement('li');
+        li.className = 'room-item';
+        li.innerText = name;
+        li.onclick = () => showJoin(name);
+        roomUl.appendChild(li);
+      });
+    });
 
-      socket.emit('join-room', { roomName, password, username });
-      document.getElementById('roomTitle').innerText = `Room: ${roomName}`;
+    function showCreate() {
+      isCreatingMode = true;
+      document.getElementById('auth-title').innerText = "Create New Room";
+      document.getElementById('roomName').disabled = false;
+      document.getElementById('roomName').value = "";
+      switchView(vAuth);
+    }
+
+    function showJoin(name) {
+      isCreatingMode = false;
+      document.getElementById('auth-title').innerText = `Join ${name}`;
+      document.getElementById('roomName').value = name;
+      document.getElementById('roomName').disabled = true;
+      switchView(vAuth);
+    }
+
+    function showList() { switchView(vList); }
+
+    function submitJoin() {
+      const roomName = document.getElementById('roomName').value;
+      const password = document.getElementById('password').value;
+      const username = document.getElementById('username').value;
+      if(!roomName || !password || !username) return alert("Fill everything");
+
+      socket.emit('join-room', { roomName, password, username, isCreating: isCreatingMode });
     }
 
     socket.on('load history', (history) => {
-      lobby.style.display = 'none';
-      chatContainer.style.display = 'flex';
-      messages.innerHTML = ''; // Clear for fresh load
+      document.getElementById('room-display').innerText = `Room: ${document.getElementById('roomName').value}`;
+      switchView(vChat);
+      document.getElementById('messages').innerHTML = '';
       history.forEach(msg => addMessage(msg));
     });
 
-    socket.on('error-msg', (msg) => alert(msg));
+    socket.on('chat message', addMessage);
+    socket.on('error-msg', alert);
 
-    socket.on('chat message', (data) => addMessage(data));
-
-    document.getElementById('form').addEventListener('submit', (e) => {
+    document.getElementById('chat-form').onsubmit = (e) => {
       e.preventDefault();
-      const input = document.getElementById('input');
-      if (input.value) {
+      const input = document.getElementById('chat-input');
+      if(input.value) {
         socket.emit('chat message', { text: input.value });
         input.value = '';
       }
-    });
+    };
 
     function addMessage(data) {
-      const item = document.createElement('li');
-      item.innerHTML = `<strong>${data.username}</strong> ${data.text}`;
-      messages.appendChild(item);
-      messages.scrollTop = messages.scrollHeight;
+      const li = document.createElement('li');
+      li.innerHTML = `<strong>${data.username}:</strong> ${data.text}`;
+      const msgBox = document.getElementById('messages');
+      msgBox.appendChild(li);
+      msgBox.scrollTop = msgBox.scrollHeight;
+    }
+
+    function switchView(view) {
+      [vList, vAuth, vChat].forEach(v => v.classList.add('hidden'));
+      view.classList.remove('hidden');
     }
   </script>
 </body>
