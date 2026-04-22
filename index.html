@@ -5,57 +5,39 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Private Lobby</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; background: #0f0f0f; color: #e0e0e0; display: flex; justify-content: center; height: 100vh; overflow: hidden; }
+    body { font-family: sans-serif; margin: 0; background: #0f0f0f; color: #e0e0e0; display: flex; justify-content: center; height: 100vh; overflow: hidden; }
     .card { width: 100%; max-width: 450px; background: #1a1a1a; padding: 20px; margin-top: 50px; border-radius: 12px; height: 80vh; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.5); position: relative; }
-    
-    /* Room List Styling */
     #room-list-ul { list-style: none; padding: 0; flex-grow: 1; overflow-y: auto; }
-    .room-item { padding: 15px; background: #252525; margin-bottom: 10px; border-radius: 8px; cursor: pointer; transition: 0.2s; border: 1px solid transparent; }
+    .room-item { padding: 15px; background: #252525; margin-bottom: 10px; border-radius: 8px; cursor: pointer; border: 1px solid transparent; }
     .room-item:hover { background: #333; border-color: #4dabf7; }
-
-    /* Plus Button */
-    .fab { position: absolute; bottom: 20px; right: 20px; width: 50px; height: 50px; background: #4dabf7; color: white; border: none; border-radius: 50%; font-size: 24px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); display: flex; justify-content: center; align-items: center; }
-    .fab:hover { background: #339af0; }
-
-    /* Forms */
-    input { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 6px; border: 1px solid #333; background: #252525; color: white; box-sizing: border-box; outline: none;}
-    input:focus { border-color: #4dabf7; }
-    .btn-main { width: 100%; padding: 12px; background: #4dabf7; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; margin-bottom: 10px;}
-    .btn-main:hover { background: #339af0; }
-    .btn-secondary { width: 100%; padding: 12px; background: transparent; color: #888; border: none; cursor: pointer; }
-    .btn-secondary:hover { color: white; }
-
-    /* Chat Styling */
+    .fab { position: absolute; bottom: 20px; right: 20px; width: 50px; height: 50px; background: #4dabf7; color: white; border: none; border-radius: 50%; font-size: 24px; cursor: pointer; }
     .chat-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 10px; }
-    .header-btns button { padding: 6px 12px; font-size: 14px; margin-left: 5px; background: #333; color: white; border: none; border-radius: 4px; cursor: pointer;}
-    .header-btns button:hover { background: #444; }
-    
-    #messages { flex-grow: 1; list-style: none; padding: 0; overflow-y: auto; margin-bottom: 15px;}
-    #messages li { padding: 8px 0; border-bottom: 1px solid #252525; word-wrap: break-word;}
-    #messages li strong { color: #4dabf7; margin-right: 5px;}
-    
+    .header-btns button { padding: 6px 12px; font-size: 14px; margin-left: 5px; background: #333; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    #messages { flex-grow: 1; list-style: none; padding: 0; overflow-y: auto; margin-bottom: 15px; }
+    #messages li { padding: 8px 0; border-bottom: 1px solid #252525; word-wrap: break-word; }
+    #messages li strong { color: #4dabf7; margin-right: 5px; }
     .input-group { display: flex; gap: 10px; }
-    .input-group input { margin-bottom: 0; }
-    .input-group button { width: auto; padding: 0 20px; background: #4dabf7; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
-
+    input { width: 100%; padding: 12px; border-radius: 6px; border: 1px solid #333; background: #252525; color: white; outline: none; }
+    button { padding: 12px; background: #4dabf7; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+    button:disabled { background: #444; color: #888; cursor: not-allowed; }
     .hidden { display: none !important; }
   </style>
 </head>
 <body>
 
   <div id="view-list" class="card">
-    <h2 style="margin-top:0;">Active Rooms</h2>
+    <h2 style="margin:0 0 10px 0">Active Rooms</h2>
     <ul id="room-list-ul"></ul>
     <button class="fab" onclick="showCreate()">+</button>
   </div>
 
   <div id="view-auth" class="card hidden">
-    <h2 id="auth-title" style="margin-top:0;">Join Room</h2>
+    <h2 id="auth-title">Join Room</h2>
     <input type="text" id="username" placeholder="Your Username">
     <input type="text" id="roomName" placeholder="Room Name">
     <input type="password" id="password" placeholder="Room Password">
-    <button class="btn-main" onclick="submitJoin()">Enter Room</button>
-    <button class="btn-secondary" onclick="showList()">Cancel</button>
+    <button style="width:100%; margin-bottom:10px" onclick="submitJoin()">Enter</button>
+    <button style="width:100%; background:transparent" onclick="showList()">Cancel</button>
   </div>
 
   <div id="view-chat" class="card hidden">
@@ -68,7 +50,8 @@
     </div>
     <ul id="messages"></ul>
     <form id="chat-form" class="input-group">
-      <input id="chat-input" autocomplete="off" placeholder="Message..."><button>Send</button>
+      <input id="chat-input" autocomplete="off" placeholder="Message...">
+      <button id="send-btn">Send</button>
     </form>
   </div>
 
@@ -79,13 +62,7 @@
     let myCurrentUsername = "";
     let soundEnabled = true;
 
-    // UI Elements
-    const vList = document.getElementById('view-list');
-    const vAuth = document.getElementById('view-auth');
-    const vChat = document.getElementById('view-chat');
-    const roomUl = document.getElementById('room-list-ul');
-
-    // --- SOUND ENGINE (Web Audio API) ---
+    // Sound Engine
     function playNotificationSound() {
       if (!soundEnabled) return;
       try {
@@ -93,26 +70,23 @@
         const osc = ctx.createOscillator();
         const gainNode = ctx.createGain();
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(600, ctx.currentTime); 
+        osc.frequency.setValueAtTime(600, ctx.currentTime);
         osc.connect(gainNode);
         gainNode.connect(ctx.destination);
         osc.start();
         gainNode.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.15);
         osc.stop(ctx.currentTime + 0.15);
-      } catch (e) {
-        console.log("Audio blocked by browser.");
-      }
+      } catch (e) {}
     }
 
     function toggleSound() {
       soundEnabled = !soundEnabled;
       document.getElementById('sound-btn').innerText = soundEnabled ? '🔊 On' : '🔇 Off';
     }
-    // ------------------------------------
 
-    // List Rooms
     socket.on('room-list', (rooms) => {
-      roomUl.innerHTML = rooms.length ? '' : '<p style="color:#666">No active rooms right now.</p>';
+      const roomUl = document.getElementById('room-list-ul');
+      roomUl.innerHTML = rooms.length ? '' : '<p style="color:#666">No active rooms.</p>';
       rooms.forEach(name => {
         const li = document.createElement('li');
         li.className = 'room-item';
@@ -122,73 +96,62 @@
       });
     });
 
-    // Navigation logic
-    function showCreate() {
-      isCreatingMode = true;
-      document.getElementById('auth-title').innerText = "Create New Room";
-      document.getElementById('roomName').disabled = false;
-      document.getElementById('roomName').value = "";
-      document.getElementById('password').value = "";
-      switchView(vAuth);
-    }
+    function showCreate() { isCreatingMode = true; document.getElementById('auth-title').innerText = "Create Room"; document.getElementById('roomName').disabled = false; switchView(document.getElementById('view-auth')); }
+    function showJoin(name) { isCreatingMode = false; document.getElementById('auth-title').innerText = `Join ${name}`; document.getElementById('roomName').value = name; document.getElementById('roomName').disabled = true; switchView(document.getElementById('view-auth')); }
+    function showList() { switchView(document.getElementById('view-list')); }
 
-    function showJoin(name) {
-      isCreatingMode = false;
-      document.getElementById('auth-title').innerText = `Join ${name}`;
-      document.getElementById('roomName').value = name;
-      document.getElementById('roomName').disabled = true;
-      document.getElementById('password').value = "";
-      switchView(vAuth);
-    }
-
-    function showList() { switchView(vList); }
-
-    function switchView(view) {
-      [vList, vAuth, vChat].forEach(v => v.classList.add('hidden'));
-      view.classList.remove('hidden');
-    }
-
-    // Join/Leave Logic
     function submitJoin() {
       const roomName = document.getElementById('roomName').value;
       const password = document.getElementById('password').value;
       const username = document.getElementById('username').value;
-      if(!roomName || !password || !username) return alert("Please fill out all fields.");
-
-      myCurrentUsername = username; 
+      if(!roomName || !password || !username) return alert("Fill all fields");
+      myCurrentUsername = username;
       socket.emit('join-room', { roomName, password, username, isCreating: isCreatingMode });
     }
 
-    function leaveRoom() {
-      socket.emit('leave-room'); 
-      document.getElementById('messages').innerHTML = ''; 
-      switchView(vList); 
-    }
+    function leaveRoom() { socket.emit('leave-room'); switchView(document.getElementById('view-list')); }
 
-    // Chat Logic
     socket.on('load history', (history) => {
       document.getElementById('room-display').innerText = document.getElementById('roomName').value;
-      switchView(vChat);
-      document.getElementById('messages').innerHTML = '';
-      history.forEach(msg => addMessage(msg)); 
+      switchView(document.getElementById('view-chat'));
+      const msgBox = document.getElementById('messages');
+      msgBox.innerHTML = '';
+      history.forEach(msg => addMessage(msg));
     });
 
-    socket.on('error-msg', alert);
+    socket.on('error-msg', (err) => {
+        alert(err);
+        // If it's a rate limit error, the button will stay disabled by its own timer
+    });
 
     document.getElementById('chat-form').onsubmit = (e) => {
       e.preventDefault();
       const input = document.getElementById('chat-input');
+      const btn = document.getElementById('send-btn');
+      
       if(input.value) {
         socket.emit('chat message', { text: input.value });
         input.value = '';
+
+        // UI Cooldown logic
+        btn.disabled = true;
+        let timeLeft = 2;
+        btn.innerText = timeLeft;
+        const timer = setInterval(() => {
+            timeLeft--;
+            if (timeLeft <= 0) {
+                clearInterval(timer);
+                btn.disabled = false;
+                btn.innerText = 'Send';
+            } else {
+                btn.innerText = timeLeft;
+            }
+        }, 1000);
       }
     };
 
     socket.on('chat message', (data) => {
-      // Play sound only if it is NOT our own message
-      if (data.username !== myCurrentUsername) {
-        playNotificationSound();
-      }
+      if (data.username !== myCurrentUsername) playNotificationSound();
       addMessage(data);
     });
 
@@ -198,6 +161,11 @@
       const msgBox = document.getElementById('messages');
       msgBox.appendChild(li);
       msgBox.scrollTop = msgBox.scrollHeight;
+    }
+
+    function switchView(view) {
+      [document.getElementById('view-list'), document.getElementById('view-auth'), document.getElementById('view-chat')].forEach(v => v.classList.add('hidden'));
+      view.classList.remove('hidden');
     }
   </script>
 </body>

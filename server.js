@@ -4,58 +4,67 @@ const { Server } = require("socket.io");
 
 const app = express();
 const server = http.createServer(app);
+const io = new Server(server, { cors: { origin: "*" } });
 
-// Allow external websites to connect
-const io = new Server(server, {
-  cors: {
-    origin: "*", 
-    methods: ["GET", "POST"]
-  }
-});
-
-// Store rooms in memory
 let rooms = {};
+
+// Simple filter list - you can add more words here
+const BANNED_WORDS = ['Nigga', 'nigga', 'nigger', 'Nigger', 'Fuck', 'fuck', 'porn', 'Porn'];
+
+function filterText(text) {
+  let filtered = text;
+  BANNED_WORDS.forEach(word => {
+    const regex = new RegExp(word, 'gi');
+    filtered = filtered.replace(regex, '*'.repeat(word.length));
+  });
+  return filtered;
+}
 
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/index.html');
 });
 
-// Helper to send names of active rooms to everyone in the lobby
 function broadcastRoomList() {
   io.emit('room-list', Object.keys(rooms));
 }
 
 io.on('connection', (socket) => {
-  // 1. Send current list immediately upon connecting
+  // Track spam prevention per socket
+  socket.lastMessageTime = 0;
+
   socket.emit('room-list', Object.keys(rooms));
 
-  // 2. Handle Joining or Creating a room
   socket.on('join-room', (data) => {
     const { roomName, password, username, isCreating } = data;
-
     if (isCreating) {
       if (rooms[roomName]) return socket.emit('error-msg', 'Room already exists.');
       rooms[roomName] = { password, messages: [], users: new Set() };
       broadcastRoomList(); 
     }
-
     if (!rooms[roomName]) return socket.emit('error-msg', 'Room does not exist.');
     if (rooms[roomName].password !== password) return socket.emit('error-msg', 'Incorrect password.');
 
-    // Join the specific room
     socket.join(roomName);
     socket.currentRoom = roomName;
     socket.username = username;
     rooms[roomName].users.add(socket.id);
-
-    // Send the last 100 messages
     socket.emit('load history', rooms[roomName].messages);
   });
 
-  // 3. Handle incoming chat messages
   socket.on('chat message', (data) => {
+    const now = Date.now();
+    
+    // 2-Second Spam Prevention
+    if (now - socket.lastMessageTime < 2000) {
+      return socket.emit('error-msg', 'Slow down! 1 message every 2 seconds.');
+    }
+
     if (socket.currentRoom && rooms[socket.currentRoom]) {
-      const msg = { username: socket.username, text: data.text };
+      socket.lastMessageTime = now;
+      
+      // Profanity Filter
+      const cleanText = filterText(data.text);
+      const msg = { username: socket.username, text: cleanText };
       
       rooms[socket.currentRoom].messages.push(msg);
       if (rooms[socket.currentRoom].messages.length > 100) rooms[socket.currentRoom].messages.shift();
@@ -64,24 +73,19 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 4. Handle a user explicitly clicking the "Leave" button
   socket.on('leave-room', () => {
     const roomName = socket.currentRoom;
     if (roomName && rooms[roomName]) {
       rooms[roomName].users.delete(socket.id);
       socket.leave(roomName); 
-      
-      // Delete room if empty
       if (rooms[roomName].users.size === 0) {
         delete rooms[roomName];
         broadcastRoomList();
       }
-      
       socket.currentRoom = null;
     }
   });
 
-  // 5. Handle a user closing their browser tab entirely
   socket.on('disconnect', () => {
     const roomName = socket.currentRoom;
     if (roomName && rooms[roomName]) {
@@ -94,8 +98,5 @@ io.on('connection', (socket) => {
   });
 });
 
-// Port configuration for Koyeb
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, "0.0.0.0", () => {
-  console.log(`Server running on port ${PORT}`);
-});
+server.listen(PORT, "0.0.0.0", () => console.log(`Server on ${PORT}`));
