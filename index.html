@@ -3,77 +3,82 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Private Chat</title>
+  <title>Room Engine</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; background: #0f0f0f; color: #e0e0e0; display: flex; justify-content: center; align-items: center; height: 100vh; }
-    #chat-container { display: none; width: 100%; max-width: 500px; height: 80vh; flex-direction: column; background: #1a1a1a; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-    #messages { flex-grow: 1; list-style-type: none; margin: 0; padding: 20px; overflow-y: auto; border-bottom: 1px solid #333; }
-    #messages li { margin-bottom: 12px; line-height: 1.4; border-bottom: 1px solid #252525; padding-bottom: 8px; }
+    body { font-family: sans-serif; margin: 0; background: #0f0f0f; color: #e0e0e0; display: flex; justify-content: center; align-items: center; height: 100vh; }
+    #lobby, #chat-container { width: 100%; max-width: 450px; background: #1a1a1a; padding: 25px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+    #chat-container { display: none; height: 80vh; flex-direction: column; }
+    input { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 6px; border: 1px solid #333; background: #252525; color: white; box-sizing: border-box; }
+    #messages { flex-grow: 1; list-style: none; padding: 0; overflow-y: auto; margin-bottom: 15px; }
+    #messages li { padding: 8px 0; border-bottom: 1px solid #252525; }
     #messages li strong { color: #4dabf7; margin-right: 8px; }
-    #form { display: flex; padding: 15px; background: #252525; }
-    #input { flex-grow: 1; border: none; padding: 12px; border-radius: 6px; background: #333; color: white; outline: none; }
-    button { background: #4dabf7; color: white; border: none; padding: 0 20px; margin-left: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; }
-    button:hover { background: #339af0; }
+    button { width: 100%; padding: 12px; background: #4dabf7; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+    .chat-form { display: flex; }
+    .chat-form input { margin-bottom: 0; margin-right: 10px; }
+    .chat-form button { width: auto; }
   </style>
 </head>
 <body>
 
+  <div id="lobby">
+    <h2 style="margin-top:0">Join or Create Room</h2>
+    <input type="text" id="roomInput" placeholder="Room Name">
+    <input type="password" id="passInput" placeholder="Room Password">
+    <input type="text" id="userInput" placeholder="Your Username">
+    <button onclick="joinRoom()">Enter Room</button>
+  </div>
+
   <div id="chat-container">
+    <h3 id="roomTitle" style="margin-top:0; color:#4dabf7"></h3>
     <ul id="messages"></ul>
-    <form id="form">
-      <input id="input" autocomplete="off" placeholder="Say something..." /><button>Send</button>
+    <form id="form" class="chat-form">
+      <input id="input" autocomplete="off" placeholder="Message..." /><button>Send</button>
     </form>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
-    const correctPass = "therealdeer";
-    let userPass = prompt("Secret Password:");
+    const lobby = document.getElementById('lobby');
+    const chatContainer = document.getElementById('chat-container');
+    const messages = document.getElementById('messages');
 
-    if (userPass !== correctPass) {
-      alert("Access Denied.");
-      window.location.reload();
-    } else {
-      let username = prompt("Enter a username:") || "Guest";
-      document.getElementById('chat-container').style.display = 'flex';
+    function joinRoom() {
+      const roomName = document.getElementById('roomInput').value;
+      const password = document.getElementById('passInput').value;
+      const username = document.getElementById('userInput').value;
 
-      // Tell the server we joined and check password for history
-      socket.emit('join', { password: userPass });
+      if (!roomName || !password || !username) return alert("Fill all fields");
 
-      const form = document.getElementById('form');
+      socket.emit('join-room', { roomName, password, username });
+      document.getElementById('roomTitle').innerText = `Room: ${roomName}`;
+    }
+
+    socket.on('load history', (history) => {
+      lobby.style.display = 'none';
+      chatContainer.style.display = 'flex';
+      messages.innerHTML = ''; // Clear for fresh load
+      history.forEach(msg => addMessage(msg));
+    });
+
+    socket.on('error-msg', (msg) => alert(msg));
+
+    socket.on('chat message', (data) => addMessage(data));
+
+    document.getElementById('form').addEventListener('submit', (e) => {
+      e.preventDefault();
       const input = document.getElementById('input');
-      const messages = document.getElementById('messages');
+      if (input.value) {
+        socket.emit('chat message', { text: input.value });
+        input.value = '';
+      }
+    });
 
-      // Function to add a message to the UI
-      const addMessage = (data) => {
-        const item = document.createElement('li');
-        item.innerHTML = `<strong>${data.username}</strong> ${data.text}`;
-        messages.appendChild(item);
-        messages.scrollTop = messages.scrollHeight;
-      };
-
-      // Handle loading the 100-message history
-      socket.on('load history', (history) => {
-        history.forEach(msg => addMessage(msg));
-      });
-
-      form.addEventListener('submit', (e) => {
-        e.preventDefault();
-        if (input.value) {
-          socket.emit('chat message', {
-            password: userPass,
-            username: username,
-            text: input.value
-          });
-          input.value = '';
-        }
-      });
-
-      // Handle new incoming messages
-      socket.on('chat message', (data) => {
-        addMessage(data);
-      });
+    function addMessage(data) {
+      const item = document.createElement('li');
+      item.innerHTML = `<strong>${data.username}</strong> ${data.text}`;
+      messages.appendChild(item);
+      messages.scrollTop = messages.scrollHeight;
     }
   </script>
 </body>
