@@ -9,7 +9,7 @@ const io = new Server(server, { cors: { origin: "*" } });
 let rooms = {};
 
 // Simple filter list - you can add more words here
-const BANNED_WORDS = ['Nigga', 'nigga', 'nigger', 'Nigger', 'Fuck', 'fuck', 'porn', 'Porn', 'cunt', 'Cunt', 'faggot', 'fag', 'Faggot', 'Fag', 'wigger', 'goon', 'Gooning', 'Goon', 'gooning', 'cum', 'Cum', 'Cock', 'Fu(k', 'Wigger', 'sex', 'Gooner', 'gooner', 'sexist'];
+const BANNED_WORDS = ['Nigga', 'nigga', 'nigger', 'Nigger', 'Fuck', 'fuck', 'porn', 'Porn', 'cunt', 'Cunt', 'faggot', 'fag', 'Faggot', 'Fag', 'wigger', 'goon', 'Gooning', 'Goon', 'gooning', 'cum', 'Cum', 'Cock', 'Fuk', 'Wigger', 'sex', 'Gooner', 'gooner', 'sexist'];
 
 function filterText(text) {
   let filtered = text;
