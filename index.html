@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Private Lobby</title>
+  <style>
+    :root {
+      --bg:       #0a0a0f;
+      --card:     #111118;
+      --surface:  #1a1a26;
+      --border:   #2a2a3a;
+      --accent:   #4dabf7;
+      --accent2:  #2ecc71;
+      --danger:   #e74c3c;
+      --text:     #dde1f0;
+      --subtext:  #7a7f9a;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 480px;
+      background: var(--card);
+      padding: 20px;
+      margin-top: 40px;
+      border-radius: 14px;
+      height: calc(100vh - 80px);
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+      border: 1px solid var(--border);
+    }
+
+    /* ── Room List ──────────────────────────────────────────────────────── */
+    #room-list-ul { list-style: none; padding: 0; margin: 0; flex-grow: 1; overflow-y: auto; }
+    .room-item {
+      padding: 14px 16px;
+      background: var(--surface);
+      margin-bottom: 8px;
+      border-radius: 10px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .room-item::before { content: '🔒'; font-size: 14px; }
+    .room-item:hover { background: #222230; border-color: var(--accent); }
+
+    .fab {
+      position: absolute;
+      bottom: 20px; right: 20px;
+      width: 52px; height: 52px;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      font-size: 26px;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(77,171,247,0.4);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .fab:hover { transform: scale(1.08); box-shadow: 0 6px 24px rgba(77,171,247,0.6); }
+
+    /* ── Auth Form ──────────────────────────────────────────────────────── */
+    #view-auth input {
+      width: 100%; padding: 12px 14px;
+      border-radius: 8px; border: 1px solid var(--border);
+      background: var(--surface); color: var(--text);
+      outline: none; margin-bottom: 10px;
+      transition: border-color 0.15s;
+    }
+    #view-auth input:focus { border-color: var(--accent); }
+
+    /* ── Chat View ──────────────────────────────────────────────────────── */
+    .chat-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 12px;
+      margin-bottom: 10px;
+      flex-shrink: 0;
+    }
+    .header-btns { display: flex; gap: 6px; }
+    .header-btns button {
+      padding: 5px 11px; font-size: 13px;
+      background: var(--surface); color: var(--text);
+      border: 1px solid var(--border); border-radius: 6px; cursor: pointer;
+      transition: background 0.15s;
+    }
+    .header-btns button:hover { background: #2a2a3a; }
+
+    /* ── Voice Bar ──────────────────────────────────────────────────────── */
+    .voice-join-btn {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 8px;
+      background: transparent;
+      color: var(--accent2);
+      border: 1px solid var(--accent2);
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      transition: background 0.15s, color 0.15s;
+      flex-shrink: 0;
+    }
+    .voice-join-btn:hover { background: var(--accent2); color: #000; }
+
+    .voice-bar {
+      background: #0d2118;
+      border: 1px solid #1e5c36;
+      border-radius: 10px;
+      padding: 8px 12px;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+    .voice-bar-left { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+    .voice-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent2);
+      flex-shrink: 0;
+    }
+    .voice-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+    .voice-chip {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: #132b1c;
+      border: 1px solid #1e5c36;
+      padding: 3px 8px 3px 4px;
+      border-radius: 20px;
+      font-size: 12px;
+    }
+    .voice-avatar {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: #1e5c36;
+      color: var(--accent2);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 700;
+      transition: all 0.1s;
+      flex-shrink: 0;
+    }
+    .voice-avatar.speaking {
+      background: var(--accent2);
+      color: #000;
+      box-shadow: 0 0 0 3px rgba(46,204,113,0.35);
+    }
+    .voice-avatar.muted { background: #333; color: #888; }
+
+    .voice-controls { display: flex; gap: 6px; flex-shrink: 0; }
+    .voice-controls button {
+      padding: 5px 10px; font-size: 12px; font-weight: 600;
+      border: none; border-radius: 6px; cursor: pointer;
+    }
+    #mute-btn { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+    #mute-btn:hover { background: #2a2a3a; }
+    #mute-btn.muted { background: #3a1a1a; color: #e74c3c; border-color: #5a2a2a; }
+    .vc-leave-btn { background: #3a1212; color: var(--danger); border: 1px solid #5a2020; }
+    .vc-leave-btn:hover { background: var(--danger); color: #fff; }
+
+    /* ── Messages ───────────────────────────────────────────────────────── */
+    #messages {
+      flex-grow: 1; list-style: none; padding: 0; margin: 0;
+      overflow-y: auto; margin-bottom: 12px;
+    }
+    #messages::-webkit-scrollbar { width: 4px; }
+    #messages::-webkit-scrollbar-track { background: transparent; }
+    #messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    #messages li {
+      padding: 7px 0;
+      border-bottom: 1px solid #16161e;
+      word-wrap: break-word;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    #messages li strong { color: var(--accent); margin-right: 6px; }
+
+    /* ── Input ──────────────────────────────────────────────────────────── */
+    .input-group { display: flex; gap: 8px; flex-shrink: 0; }
+    input[type="text"], input[type="password"], #chat-input {
+      flex: 1; padding: 11px 14px;
+      border-radius: 8px; border: 1px solid var(--border);
+      background: var(--surface); color: var(--text);
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    input:focus { border-color: var(--accent); }
+
+    button { padding: 11px 16px; background: var(--accent); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 700; transition: background 0.15s; }
+    button:hover { background: #6ec0ff; }
+    button:disabled { background: #333; color: #666; cursor: not-allowed; }
+
+    .hidden { display: none !important; }
+    h2, h3 { margin: 0 0 14px 0; }
+    h3 { color: var(--accent); }
+
+    /* ── Connection status dot ──────────────────────────────────────────── */
+    .vc-connecting { animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+  </style>
+</head>
+<body>
+
+  <!-- ── Room List View ──────────────────────────────────────────────── -->
+  <div id="view-list" class="card" style="position:relative">
+    <h2>Active Rooms</h2>
+    <ul id="room-list-ul"></ul>
+    <button class="fab" onclick="showCreate()" title="Create room">+</button>
+  </div>
+
+  <!-- ── Auth / Join View ────────────────────────────────────────────── -->
+  <div id="view-auth" class="card hidden">
+    <h2 id="auth-title">Join Room</h2>
+    <input type="text"     id="username" placeholder="Your Username">
+    <input type="text"     id="roomName" placeholder="Room Name">
+    <input type="password" id="password" placeholder="Room Password">
+    <button style="width:100%; margin-bottom:10px" onclick="submitJoin()">Enter</button>
+    <button style="width:100%; background:transparent; border:1px solid var(--border); color:var(--text)" onclick="showList()">Cancel</button>
+  </div>
+
+  <!-- ── Chat View ───────────────────────────────────────────────────── -->
+  <div id="view-chat" class="card hidden">
+
+    <div class="chat-header">
+      <h3 id="room-display"></h3>
+      <div class="header-btns">
+        <button onclick="toggleSound()" id="sound-btn">🔊 On</button>
+        <button onclick="leaveRoom()">🔙 Leave</button>
+      </div>
+    </div>
+
+    <!-- Voice join button (visible when not in VC) -->
+    <button id="voice-join-btn" class="voice-join-btn" onclick="joinVoice()">🎤 Join Voice Chat</button>
+
+    <!-- Voice bar (visible when in VC) -->
+    <div id="voice-panel" class="hidden">
+      <div class="voice-bar">
+        <div class="voice-bar-left">
+          <span class="voice-label">🔴 Live</span>
+          <div id="voice-chips" class="voice-chips"></div>
+        </div>
+        <div class="voice-controls">
+          <button id="mute-btn" onclick="toggleMute()">🎤 Mute</button>
+          <button class="vc-leave-btn" onclick="leaveVoiceChat()">📵 Leave VC</button>
+        </div>
+      </div>
+    </div>
+
+    <ul id="messages"></ul>
+
+    <form id="chat-form" class="input-group">
+      <input id="chat-input" autocomplete="off" placeholder="Message...">
+      <button id="send-btn">Send</button>
+    </form>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+
+    // ── App State ────────────────────────────────────────────────────────────
+    let isCreatingMode    = false;
+    let myCurrentUsername = '';
+    let soundEnabled      = true;
+
+    // ── Voice State ──────────────────────────────────────────────────────────
+    let localStream      = null;
+    let peerConnections  = {};          // socketId -> RTCPeerConnection
+    let voiceParticipants = {};         // socketId -> { username }
+    let isMuted          = false;
+    let isInVoice        = false;
+    let speakingIntervals = {};         // socketId -> animationFrame handle
+
+    const ICE_CONFIG = {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun.cloudflare.com:3478' }
+      ]
+    };
+
+    // ── Notification Sound ────────────────────────────────────────────────────
+    function playNotificationSound() {
+      if (!soundEnabled) return;
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(600, ctx.currentTime);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.15);
+        osc.stop(ctx.currentTime + 0.15);
+      } catch (e) {}
+    }
+
+    function toggleSound() {
+      soundEnabled = !soundEnabled;
+      document.getElementById('sound-btn').innerText = soundEnabled ? '🔊 On' : '🔇 Off';
+    }
+
+    // ── Room List ─────────────────────────────────────────────────────────────
+    socket.on('room-list', (rooms) => {
+      const ul = document.getElementById('room-list-ul');
+      ul.innerHTML = rooms.length ? '' : '<p style="color:var(--subtext);padding:12px">No active rooms.</p>';
+      rooms.forEach(name => {
+        const li = document.createElement('li');
+        li.className = 'room-item';
+        li.textContent = name;
+        li.onclick = () => showJoin(name);
+        ul.appendChild(li);
+      });
+    });
+
+    // ── Navigation ────────────────────────────────────────────────────────────
+    function showCreate() {
+      isCreatingMode = true;
+      document.getElementById('auth-title').innerText = 'Create Room';
+      document.getElementById('roomName').disabled = false;
+      switchView('view-auth');
+    }
+    function showJoin(name) {
+      isCreatingMode = false;
+      document.getElementById('auth-title').innerText = `Join ${name}`;
+      document.getElementById('roomName').value = name;
+      document.getElementById('roomName').disabled = true;
+      switchView('view-auth');
+    }
+    function showList() { switchView('view-list'); }
+
+    function submitJoin() {
+      const roomName  = document.getElementById('roomName').value.trim();
+      const password  = document.getElementById('password').value;
+      const username  = document.getElementById('username').value.trim();
+      if (!roomName || !password || !username) return alert('Fill all fields');
+      myCurrentUsername = username;
+      socket.emit('join-room', { roomName, password, username, isCreating: isCreatingMode });
+    }
+
+    function leaveRoom() {
+      if (isInVoice) cleanupVoice();
+      socket.emit('leave-room');
+      switchView('view-list');
+    }
+
+    socket.on('load history', (history) => {
+      document.getElementById('room-display').innerText = document.getElementById('roomName').value;
+      switchView('view-chat');
+      const box = document.getElementById('messages');
+      box.innerHTML = '';
+      history.forEach(msg => appendMessage(msg));
+    });
+
+    socket.on('error-msg', (err) => { alert(err); });
+
+    // ── Chat ──────────────────────────────────────────────────────────────────
+    document.getElementById('chat-form').onsubmit = (e) => {
+      e.preventDefault();
+      const input = document.getElementById('chat-input');
+      const btn   = document.getElementById('send-btn');
+      if (!input.value.trim()) return;
+      socket.emit('chat message', { text: input.value });
+      input.value = '';
+      btn.disabled = true;
+      let t = 2;
+      btn.innerText = t;
+      const timer = setInterval(() => {
+        t--;
+        if (t <= 0) { clearInterval(timer); btn.disabled = false; btn.innerText = 'Send'; }
+        else btn.innerText = t;
+      }, 1000);
+    };
+
+    socket.on('chat message', (data) => {
+      if (data.username !== myCurrentUsername) playNotificationSound();
+      appendMessage(data);
+    });
+
+    function appendMessage(data) {
+      const li     = document.createElement('li');
+      const strong = document.createElement('strong');
+      strong.textContent = data.username + ':';
+      li.appendChild(strong);
+      li.appendChild(document.createTextNode(' ' + data.text));
+      const box = document.getElementById('messages');
+      box.appendChild(li);
+      box.scrollTop = box.scrollHeight;
+    }
+
+    // ── View switch ───────────────────────────────────────────────────────────
+    function switchView(id) {
+      ['view-list','view-auth','view-chat'].forEach(v =>
+        document.getElementById(v).classList.add('hidden')
+      );
+      document.getElementById(id).classList.remove('hidden');
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    //  VOICE CHAT — WebRTC P2P
+    // ════════════════════════════════════════════════════════════════════════
+
+    /** Join voice: get mic, register with server */
+    async function joinVoice() {
+      if (isInVoice) return;
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      } catch (err) {
+        return alert(`Microphone access denied: ${err.message}\n\nMake sure the page is served over HTTPS.`);
+      }
+      isInVoice = true;
+      socket.emit('voice-join');
+      updateVoiceUI();
+      startLocalSpeakingDetection();
+    }
+
+    /** Leave voice gracefully */
+    function leaveVoiceChat() {
+      socket.emit('voice-leave');
+      cleanupVoice();
+    }
+
+    /** Tear down everything */
+    function cleanupVoice() {
+      if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
+      Object.entries(peerConnections).forEach(([id, pc]) => {
+        pc.close();
+        removeRemoteAudio(id);
+      });
+      peerConnections  = {};
+      voiceParticipants = {};
+      Object.values(speakingIntervals).forEach(cancelAnimationFrame);
+      speakingIntervals = {};
+      isInVoice = false;
+      isMuted   = false;
+      updateVoiceUI();
+    }
+
+    // ── Server tells us who's already in voice (we create offers for each) ──
+    socket.on('voice-users', async (peers) => {
+      for (const { socketId, username } of peers) {
+        voiceParticipants[socketId] = { username };
+        await createPeer(socketId, username, true);  // we are the initiator
+      }
+      renderVoiceChips();
+    });
+
+    // ── A new peer joined VC (they will send us an offer) ──────────────────
+    socket.on('voice-user-joined', ({ socketId, username }) => {
+      voiceParticipants[socketId] = { username };
+      renderVoiceChips();
+    });
+
+    // ── A peer left VC ─────────────────────────────────────────────────────
+    socket.on('voice-user-left', ({ socketId }) => {
+      if (peerConnections[socketId]) { peerConnections[socketId].close(); delete peerConnections[socketId]; }
+      removeRemoteAudio(socketId);
+      if (speakingIntervals[socketId]) { cancelAnimationFrame(speakingIntervals[socketId]); delete speakingIntervals[socketId]; }
+      delete voiceParticipants[socketId];
+      renderVoiceChips();
+    });
+
+    // ── Room-wide voice list (e.g. to see VC participants before joining) ──
+    socket.on('voice-list', (users) => {
+      // shown passively; no action needed unless we implement a preview badge
+    });
+
+    // ── Relay: incoming WebRTC signal from a peer ───────────────────────────
+    socket.on('webrtc-signal', async ({ from, username, signal }) => {
+      try {
+        if (signal.type === 'offer') {
+          // Ensure we have the peer registered
+          if (!voiceParticipants[from]) voiceParticipants[from] = { username };
+          const pc = await createPeer(from, username, false);  // not initiator
+          await pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          socket.emit('webrtc-signal', { to: from, signal: { type: 'answer', sdp: pc.localDescription } });
+          renderVoiceChips();
+
+        } else if (signal.type === 'answer') {
+          const pc = peerConnections[from];
+          if (pc && pc.signalingState !== 'stable') {
+            await pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
+          }
+
+        } else if (signal.type === 'ice-candidate') {
+          const pc = peerConnections[from];
+          if (pc) {
+            try { await pc.addIceCandidate(new RTCIceCandidate(signal.candidate)); } catch (_) {}
+          }
+        }
+      } catch (err) {
+        console.warn('webrtc-signal error:', err);
+      }
+    });
+
+    // ── Create a new RTCPeerConnection for a peer ───────────────────────────
+    async function createPeer(socketId, username, isInitiator) {
+      // Avoid duplicates
+      if (peerConnections[socketId]) peerConnections[socketId].close();
+
+      const pc = new RTCPeerConnection(ICE_CONFIG);
+      peerConnections[socketId] = pc;
+
+      // Add local mic tracks
+      if (localStream) {
+        localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+      }
+
+      // Send ICE candidates as they're found
+      pc.onicecandidate = ({ candidate }) => {
+        if (candidate) {
+          socket.emit('webrtc-signal', { to: socketId, signal: { type: 'ice-candidate', candidate } });
+        }
+      };
+
+      pc.onconnectionstatechange = () => {
+        const chip = document.getElementById(`chip-${socketId}`);
+        if (chip) {
+          chip.classList.toggle('vc-connecting', pc.connectionState === 'connecting');
+        }
+      };
+
+      // Play remote audio when tracks arrive
+      pc.ontrack = ({ streams }) => {
+        if (streams && streams[0]) {
+          addRemoteAudio(socketId, username, streams[0]);
+        }
+      };
+
+      if (isInitiator) {
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        socket.emit('webrtc-signal', { to: socketId, signal: { type: 'offer', sdp: pc.localDescription } });
+      }
+
+      return pc;
+    }
+
+    // ── Audio element helpers ───────────────────────────────────────────────
+    function addRemoteAudio(socketId, username, stream) {
+      let audio = document.getElementById(`vc-audio-${socketId}`);
+      if (!audio) {
+        audio = document.createElement('audio');
+        audio.id = `vc-audio-${socketId}`;
+        audio.autoplay = true;
+        audio.style.display = 'none';
+        document.body.appendChild(audio);
+      }
+      audio.srcObject = stream;
+      startRemoteSpeakingDetection(socketId, stream);
+    }
+
+    function removeRemoteAudio(socketId) {
+      const el = document.getElementById(`vc-audio-${socketId}`);
+      if (el) { el.srcObject = null; el.remove(); }
+    }
+
+    // ── Speaking detection ──────────────────────────────────────────────────
+    function startLocalSpeakingDetection() {
+      if (!localStream) return;
+      try {
+        const ac       = new AudioContext();
+        const src      = ac.createMediaStreamSource(localStream);
+        const analyser = ac.createAnalyser();
+        analyser.fftSize = 256;
+        src.connect(analyser);
+        const data = new Uint8Array(analyser.frequencyBinCount);
+
+        function tick() {
+          if (!isInVoice) return;
+          analyser.getByteFrequencyData(data);
+          const avg = data.reduce((a, b) => a + b, 0) / data.length;
+          const avatar = document.getElementById('vc-self-avatar');
+          if (avatar) avatar.classList.toggle('speaking', avg > 8 && !isMuted);
+          speakingIntervals['self'] = requestAnimationFrame(tick);
+        }
+        speakingIntervals['self'] = requestAnimationFrame(tick);
+      } catch (_) {}
+    }
+
+    function startRemoteSpeakingDetection(socketId, stream) {
+      if (speakingIntervals[socketId]) cancelAnimationFrame(speakingIntervals[socketId]);
+      try {
+        const ac       = new AudioContext();
+        const src      = ac.createMediaStreamSource(stream);
+        const analyser = ac.createAnalyser();
+        analyser.fftSize = 256;
+        src.connect(analyser);
+        const data = new Uint8Array(analyser.frequencyBinCount);
+
+        function tick() {
+          if (!voiceParticipants[socketId]) return;
+          analyser.getByteFrequencyData(data);
+          const avg = data.reduce((a, b) => a + b, 0) / data.length;
+          const avatar = document.getElementById(`vc-avatar-${socketId}`);
+          if (avatar) avatar.classList.toggle('speaking', avg > 8);
+          speakingIntervals[socketId] = requestAnimationFrame(tick);
+        }
+        speakingIntervals[socketId] = requestAnimationFrame(tick);
+      } catch (_) {}
+    }
+
+    // ── Mute toggle ─────────────────────────────────────────────────────────
+    function toggleMute() {
+      if (!localStream) return;
+      isMuted = !isMuted;
+      localStream.getAudioTracks().forEach(t => t.enabled = !isMuted);
+      const btn = document.getElementById('mute-btn');
+      btn.innerText  = isMuted ? '🔇 Unmute' : '🎤 Mute';
+      btn.classList.toggle('muted', isMuted);
+      // Update self avatar immediately
+      const selfAvatar = document.getElementById('vc-self-avatar');
+      if (selfAvatar) selfAvatar.classList.toggle('muted', isMuted);
+    }
+
+    // ── Render voice participant chips ──────────────────────────────────────
+    function renderVoiceChips() {
+      const container = document.getElementById('voice-chips');
+      container.innerHTML = '';
+
+      // Self
+      const selfChip = document.createElement('div');
+      selfChip.className = 'voice-chip';
+      selfChip.id = 'vc-self-chip';
+      const selfAvatar = document.createElement('span');
+      selfAvatar.className = 'voice-avatar' + (isMuted ? ' muted' : '');
+      selfAvatar.id = 'vc-self-avatar';
+      selfAvatar.textContent = (myCurrentUsername[0] || '?').toUpperCase();
+      const selfName = document.createElement('span');
+      selfName.textContent = myCurrentUsername + ' (you)';
+      selfChip.appendChild(selfAvatar);
+      selfChip.appendChild(selfName);
+      container.appendChild(selfChip);
+
+      // Remote peers
+      Object.entries(voiceParticipants).forEach(([id, { username }]) => {
+        const chip = document.createElement('div');
+        chip.className = 'voice-chip';
+        chip.id = `chip-${id}`;
+        const avatar = document.createElement('span');
+        avatar.className = 'voice-avatar';
+        avatar.id = `vc-avatar-${id}`;
+        avatar.textContent = (username[0] || '?').toUpperCase();
+        const name = document.createElement('span');
+        name.textContent = username;
+        chip.appendChild(avatar);
+        chip.appendChild(name);
+        container.appendChild(chip);
+      });
+    }
+
+    // ── Voice UI toggle ─────────────────────────────────────────────────────
+    function updateVoiceUI() {
+      document.getElementById('voice-panel').classList.toggle('hidden', !isInVoice);
+      document.getElementById('voice-join-btn').classList.toggle('hidden', isInVoice);
+      if (!isInVoice) document.getElementById('voice-chips').innerHTML = '';
+    }
+  </script>
+</body>
+</html>

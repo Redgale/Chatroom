@@ -1,0 +1,19 @@
+services:
+  app:
+    build: .
+    container_name: private-lobby
+    restart: unless-stopped
+    # Bind ONLY to localhost so the app is not directly exposed to the internet.
+    # cloudflared (running on the host) proxies to this port.
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      - NODE_ENV=production
+      # Override the port if needed
+      # - PORT=3000
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
