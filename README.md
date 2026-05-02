@@ -9,7 +9,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>REDROOM</title>
-  <link href="[https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap](https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap)" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
   <style>
     :root {
       --neon-red:   #ff2244;
@@ -379,6 +379,7 @@
 </head>
 <body>
 
+  <!-- ── ROOM LIST ────────────────────────────────────────────────────────── -->
   <div id="view-list" class="card">
     <div class="header">
       <div>
@@ -395,6 +396,7 @@
     <button class="fab" onclick="showCreate()">+</button>
   </div>
 
+  <!-- ── AUTH ─────────────────────────────────────────────────────────────── -->
   <div id="view-auth" class="card hidden">
     <div class="header">
       <div>
@@ -421,6 +423,7 @@
     </div>
   </div>
 
+  <!-- ── CHAT ─────────────────────────────────────────────────────────────── -->
   <div id="view-chat" class="card hidden">
     <div class="chat-header">
       <div>
@@ -433,8 +436,10 @@
       </div>
     </div>
 
+    <!-- Voice join button -->
     <button id="voice-join-btn" class="voice-join-btn" onclick="joinVoice()">▶ JOIN VOICE CHANNEL</button>
 
+    <!-- Voice bar (shown when in VC) -->
     <div id="voice-panel" class="hidden">
       <div class="voice-bar">
         <div class="voice-bar-left">
@@ -458,10 +463,10 @@
     </form>
   </div>
 
-  <script src="[https://cdn.socket.io/4.7.5/socket.io.min.js](https://cdn.socket.io/4.7.5/socket.io.min.js)"></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script>
     // ── Connect to the remote backend ─────────────────────────────────────────
-    const socket = io("[http://redroom.dpdns.org](http://redroom.dpdns.org)");
+    const socket = io("http://redroom.dpdns.org");
 
     // ── App State ─────────────────────────────────────────────────────────────
     let isCreatingMode    = false;
